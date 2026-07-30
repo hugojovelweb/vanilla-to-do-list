@@ -1,177 +1,42 @@
-import './style.css'
+import './style.css';
 
-let tasks = [];
-let taskId = 1;
-let currentFilter = 'all';
+import { LocalStorageAdapter } from './repositories/LocalStorageAdapter.js';
+import { TaskRepository } from './repositories/TaskRepository.js';
+import { IncrementalIdGenerator } from './utils/idGenerator.js';
+import { TaskService } from './services/TaskService.js';
+import { getDomElements } from './ui/domElements.js';
+import { TaskListRenderer } from './ui/TaskListRenderer.js';
+import { StatsRenderer } from './ui/StatsRenderer.js';
+import { FilterButtonsRenderer } from './ui/FilterButtonsRenderer.js';
+import { TaskController } from './controllers/TaskController.js';
 
+/**
+ * Composition root.
+ * Hugo Ernesto Jovel Hernandez FSJ36
+ *
+ * DIP en acción: aquí, y solo aquí, se decide qué implementación
+ * concreta de cada abstracción se usará (LocalStorageAdapter en este
+ * caso). Cambiar de almacenamiento en el futuro (por ejemplo a una API
+ * remota) implica escribir un nuevo adaptador y modificar únicamente
+ * esta función, sin tocar TaskService, TaskController ni los renderers.
+ */
+function bootstrapApp() {
+  const storage = new LocalStorageAdapter();
+  const taskRepository = new TaskRepository(storage);
+  const idGenerator = IncrementalIdGenerator.fromExistingTasks(taskRepository.findAll());
+  const taskService = new TaskService(taskRepository, idGenerator);
 
-window.onload = function() {
-    let savedTasks = localStorage.getItem('tasks');
+  const dom = getDomElements();
 
-    if (savedTasks) {
-        tasks = JSON.parse(savedTasks);
-        taskId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
-    }
-    
-    document.getElementById('addBtn').onclick = addTask;
-    
-    let filterButtons = document.querySelectorAll('.filter-btn');
-    for (let i = 0; i < filterButtons.length; i++) {
-        filterButtons[i].onclick = function() {
-            filterTasks(this.getAttribute('data-filter'));
-        };
-    }
-    
-    document.getElementById('taskInput').onkeypress = function(e) {
-        if (e.key === 'Enter') {
-            addTask();
-        }
-    };
-    
-    renderTasks();
-    updateStats();
-};
+  const controller = new TaskController({
+    taskService,
+    dom,
+    taskListRenderer: new TaskListRenderer(dom.taskList),
+    statsRenderer: new StatsRenderer(dom.statsContainer),
+    filterButtonsRenderer: new FilterButtonsRenderer(dom.filterButtons),
+  });
 
-function addTask() {
-    let input = document.getElementById('taskInput');
-    let text = input.value;
-    
-    if (text == '') {
-        alert('Por favor escribe una tarea');
-        return;
-    }
-    
-
-    let newTask = {
-        id: taskId++,
-        text: text,
-        completed: false,
-        createdAt: new Date().toISOString()
-    };
-    
-    tasks.push(newTask);
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    
-    input.value = '';
-    
-    renderTasks();
-    updateStats();
+  controller.init();
 }
 
-
-function renderTasks() {
-    let taskList = document.getElementById('taskList');
-    taskList.innerHTML = ''; 
-
-    let filteredTasks = tasks;
-    if (currentFilter == 'active') {
-        filteredTasks = tasks.filter(function(task) {
-            return !task.completed;
-        });
-    } else if (currentFilter == 'completed') {
-        filteredTasks = tasks.filter(function(task) {
-            return task.completed;
-        });
-    }
-    
-
-    for (let i = 0; i < filteredTasks.length; i++) {
-        let task = filteredTasks[i];
-        let taskDiv = document.createElement('div');
-        taskDiv.className = 'task-item';
-        
-        if (task.completed) {
-            taskDiv.className = 'task-item completed';
-        }
-        
-        taskDiv.innerHTML = 
-            `<span>${task.text}</span>
-            <div class="task-buttons">
-              <button class="complete-btn" data-id="${task.id}">
-                ${task.completed ? "Reactivar" : "Completar"}
-              </button>
-              <button class="delete-btn" data-id="${task.id}">Eliminar</button>
-            </div>`;
-
-        let completeBtn = taskDiv.querySelector('.complete-btn');
-        let deleteBtn = taskDiv.querySelector('.delete-btn');
-        
-        completeBtn.onclick = function() {
-            toggleTask(parseInt(this.getAttribute('data-id')));
-        };
-        
-        deleteBtn.onclick = function() {
-            deleteTask(parseInt(this.getAttribute('data-id')));
-        };
-        
-        taskList.appendChild(taskDiv);
-    }
-    
-    if (filteredTasks.length === 0) {
-        taskList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay tareas para mostrar</p>';
-    }
-}
-
-function toggleTask(id) {
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id == id) {
-            tasks[i].completed = !tasks[i].completed;
-            break;
-        }
-    }
-    
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    
-    renderTasks();
-    updateStats();
-}
-
-function deleteTask(id) {
-    let newTasks = [];
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id != id) {
-            newTasks.push(tasks[i]);
-        }
-    }
-    tasks = newTasks;
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    
-    renderTasks();
-    updateStats();
-}
-
-function filterTasks(filter) {
-    currentFilter = filter;
-    
-    let buttons = document.querySelectorAll('.filter-btn');
-    for (let i = 0; i < buttons.length; i++) {
-        buttons[i].classList.remove('active');
-    }
-    
-    if (filter == 'all') {
-        buttons[0].classList.add('active');
-    } else if (filter == 'active') {
-        buttons[1].classList.add('active');
-    } else {
-        buttons[2].classList.add('active');
-    }
-    
-    renderTasks();
-}
-
-function updateStats() {
-    let total = tasks.length;
-    let completed = 0;
-    let active = 0;
-    
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].completed) {
-            completed++;
-        } else {
-            active++;
-        }
-    }
-    
-    let statsDiv = document.getElementById('stats');
-    statsDiv.innerHTML = 'Total: ' + total + ' | Completadas: ' + completed + ' | Activas: ' + active;
-}
+window.addEventListener('DOMContentLoaded', bootstrapApp);

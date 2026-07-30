@@ -36,6 +36,3 @@ src/
 | ISP | `StoragePort` expone solo `getItem`/`setItem` |
 | DIP | `TaskRepository`/`TaskService` dependen de `StoragePort`, no de `localStorage` directamente |
 
-Ver el informe completo `Refactorizacion-CleanCode-SOLID-HugoJovel-FSJ36.docx` para el
-diagnóstico de code smells, la justificación detallada de cada principio aplicado y la
-guía paso a paso de fork + commits atómicos.

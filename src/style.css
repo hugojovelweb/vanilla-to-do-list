@@ -3,16 +3,16 @@ body {
     max-width: 600px;
     margin: 50px auto;
     padding: 20px;
-    background-color: #f0f0f0;
+    background-color: #252A2E;
 }
 
 h1 {
-    color: #333;
+    color: grey;
     text-align: center;
 }
 
 #todo-container {
-    background: white;
+    background: #1E2326;
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -96,6 +96,12 @@ button:hover {
 
 .filter-btn.active {
     background-color: #4CAF50;
+}
+
+.empty-state {
+    text-align: center;
+    color: #999;
+    padding: 20px;
 }
 
 .stats {
